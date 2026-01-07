@@ -36,6 +36,23 @@ public class UetrJob {
 }
 ```
 
+### Polling & Stateful Mocking
+The `job` module is designed for continuous polling. To facilitate this, the `rest-mock` server implements a **Stateful Lifecycle State Machine**:
+
+- **TransactionStateStore**: Tracks the number of times a specific UETR has been accessed.
+- **State Progression**:
+  - **1st Call**: Returns status `INIT`. The UETR is added to the internal active map.
+  - **2nd-3rd Calls**: Returns status `PDNG` (Pending).
+  - **4th Call+**: Returns status `ACCC` (Accepted).
+- **Internal Loopback**: The mock exposes `GET /internal/active-uetrs` which the `rest-service` uses to populate the job's queue. This ensures that only transactions needing attention are processed, and once they reach `ACCC`, they naturally drop out of the system.
+
+### Dynamic Design Patterns
+- **Visitor Pattern**: Used in the `job` module for:
+  - **Auditing**: Redacting BICs before logging.
+  - **Documentation**: Generating AsciiDoc reports.
+  - **Diagrams**: Generating PlantUML sequence DSL for transaction routing.
+- **Strategy Pattern (Planned)**: For handling different message versions (SR2024 vs SR2025).
+
 ### C. Internalized Business Logic
 By moving `loadUetrs()` to the `rest-service` module, we ensure that the logic for "what to process" remains close to the data access layer, while the `job` module focuses purely on orchestration and rate limiting.
 

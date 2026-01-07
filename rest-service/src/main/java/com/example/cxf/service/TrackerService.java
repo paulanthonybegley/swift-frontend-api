@@ -9,19 +9,23 @@ import java.util.Collections;
 
 public class TrackerService implements UetrProcessor {
     private final TrackerFrontEndApi proxy;
+    private final InternalTrackerApi internalProxy;
 
     public TrackerService(String baseUrl) {
         this.proxy = JAXRSClientFactory.create(baseUrl, TrackerFrontEndApi.class,
+                Collections.singletonList(new JacksonJsonProvider()));
+        this.internalProxy = JAXRSClientFactory.create(baseUrl, InternalTrackerApi.class,
                 Collections.singletonList(new JacksonJsonProvider()));
     }
 
     @Override
     public String[] loadUetrs() {
-        String[] uetrs = new String[10];
-        for (int i = 0; i < 10; i++) {
-            uetrs[i] = java.util.UUID.randomUUID().toString();
+        try {
+            java.util.List<String> activeUetrs = internalProxy.getActiveUetrs();
+            return activeUetrs.toArray(new String[0]);
+        } catch (Exception e) {
+            return new String[0];
         }
-        return uetrs;
     }
 
     @Override

@@ -10,10 +10,16 @@ import java.util.Collections;
 
 public class App {
     public static void main(String[] args) throws Exception {
+        TransactionStateStore store = new TransactionStateStoreImpl();
+
         JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
-        sf.setResourceClasses(TrackerApiServiceImpl.class);
+        sf.setResourceClasses(TrackerApiServiceImpl.class, InternalUetrController.class);
+
         sf.setResourceProvider(TrackerApiServiceImpl.class,
-                new SingletonResourceProvider(new TrackerApiServiceImpl()));
+                new SingletonResourceProvider(new TrackerApiServiceImpl(store)));
+        sf.setResourceProvider(InternalUetrController.class,
+                new SingletonResourceProvider(new InternalUetrController(store)));
+
         sf.setProviders(Collections.singletonList(new JacksonJsonProvider()));
         sf.setInInterceptors(Collections.singletonList(new JAXRSBeanValidationInInterceptor()));
         sf.setAddress("http://localhost:9000/");
