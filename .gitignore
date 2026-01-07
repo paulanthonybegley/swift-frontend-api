@@ -1,0 +1,28 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Overlap for shade plugin
+dependency-reduced-pom.xml
+
+# IDEs
+.settings/
+.project
+.classpath
+.factorypath
+.idea/
+*.iml
+.DS_Store
+
+# Maven Wrapper
+!mvnw
+!.mvn/wrapper/maven-wrapper.properties
