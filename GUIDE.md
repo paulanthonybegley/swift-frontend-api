@@ -22,19 +22,22 @@ The project is divided into 6 modules to ensure a clean separation of concerns, 
 ### A. Compact Implementation with Jakarta EE
 We use **Jakarta EE 9/10** namespaces (`jakarta.ws.rs.*`) which is the modern standard for Java 17+, moving away from the legacy `javax` namespace.
 
-### B. High-Precision Rate Limiting
-In `job/src/main/java/com/example/cxf/job/UetrJob.java`, we implement a throttled processor:
+### B. High-Precision Rate Limiting & Decoupling
+The `job` module utilizes the **Dependency Inversion Principle**. It depends on the `UetrProcessor` interface rather than a concrete implementation.
+
 ```java
-public void run() {
-    while (!queue.isEmpty()) {
-        String uetr = queue.poll(); // Atomically removes item
-        // ... call service ...
-        if (!queue.isEmpty()) {
-            Thread.sleep(500); // Strict 2 calls/sec enforcement
-        }
+public class UetrJob {
+    private final UetrProcessor service; // Decoupled Dependency
+    // ...
+    public void run() {
+        String[] uetrs = service.loadUetrs(); // Internalized loading
+        // ...
     }
 }
 ```
+
+### C. Internalized Business Logic
+By moving `loadUetrs()` to the `rest-service` module, we ensure that the logic for "what to process" remains close to the data access layer, while the `job` module focuses purely on orchestration and rate limiting.
 
 ### C. Bean Validation (JSR 380)
 We utilize Java 17 compatible **Hibernate Validator 8.x**. The code generator translates OpenAPI patterns directly into Java annotations:

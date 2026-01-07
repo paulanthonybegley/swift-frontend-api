@@ -1,7 +1,7 @@
 package com.example.cxf.job;
 
 import com.example.cxf.model.PaymentTransaction166;
-import com.example.cxf.service.TrackerService;
+import com.example.cxf.service.UetrProcessor;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -13,15 +13,15 @@ public class UetrJobTest {
 
     @Test
     public void testProcessTenUetrs() {
-        TrackerService service = mock(TrackerService.class);
-        when(service.getTransaction(anyString())).thenReturn(new PaymentTransaction166());
-
-        UetrJob job = new UetrJob(service);
+        UetrProcessor service = mock(UetrProcessor.class);
         String[] uetrs = new String[10];
         for (int i = 0; i < 10; i++) {
             uetrs[i] = "uetr-" + i;
         }
-        job.seedUetrs(uetrs);
+        when(service.loadUetrs()).thenReturn(uetrs);
+        when(service.getTransaction(anyString())).thenReturn(new PaymentTransaction166());
+
+        UetrJob job = new UetrJob(service);
         
         long start = System.currentTimeMillis();
         job.run();
@@ -38,11 +38,11 @@ public class UetrJobTest {
 
     @Test
     public void testRemovalOnFailure() {
-        TrackerService service = mock(TrackerService.class);
+        UetrProcessor service = mock(UetrProcessor.class);
+        when(service.loadUetrs()).thenReturn(new String[]{"error-uetr"});
         when(service.getTransaction(anyString())).thenThrow(new RuntimeException("API Error"));
 
         UetrJob job = new UetrJob(service);
-        job.seedUetrs(new String[]{"error-uetr"});
         
         job.run();
         

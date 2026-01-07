@@ -1,26 +1,27 @@
 package com.example.cxf.job;
 
 import com.example.cxf.model.PaymentTransaction166;
-import com.example.cxf.service.TrackerService;
+import com.example.cxf.service.UetrProcessor;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class UetrJob {
-    private final TrackerService service;
+    private final UetrProcessor service;
     private final Queue<String> queue = new ConcurrentLinkedQueue<>();
     private static final long DELAY_MS = 500; // 2 calls per second
 
-    public UetrJob(TrackerService service) {
+    public UetrJob(UetrProcessor service) {
         this.service = service;
     }
 
-    public void seedUetrs(String[] uetrs) {
-        for (String uetr : uetrs) {
-            queue.offer(uetr);
-        }
-    }
-
     public void run() {
+        String[] uetrs = service.loadUetrs();
+        if (uetrs != null) {
+            for (String uetr : uetrs) {
+                queue.offer(uetr);
+            }
+        }
+
         while (!queue.isEmpty()) {
             String uetr = queue.poll();
             if (uetr != null) {

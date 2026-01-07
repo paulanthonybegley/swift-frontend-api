@@ -1,7 +1,7 @@
 package com.example.cxf.job;
 
 import com.example.cxf.model.PaymentTransaction166;
-import com.example.cxf.service.TrackerService;
+import com.example.cxf.service.UetrProcessor;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.Size;
 import org.mockito.Mockito;
@@ -16,7 +16,8 @@ public class UetrPropertyTest {
 
     @Property(tries = 20)
     void verifyQueueClearsAndRateLimit(@ForAll @Size(max = 20) List<String> uetrs) {
-        TrackerService service = mock(TrackerService.class);
+        UetrProcessor service = mock(UetrProcessor.class);
+        when(service.loadUetrs()).thenReturn(uetrs.toArray(new String[0]));
         // Simulate some successes and some errors
         when(service.getTransaction(anyString())).thenAnswer(invocation -> {
             String arg = invocation.getArgument(0);
@@ -27,7 +28,6 @@ public class UetrPropertyTest {
         });
 
         UetrJob job = new UetrJob(service);
-        job.seedUetrs(uetrs.toArray(new String[0]));
 
         long start = System.currentTimeMillis();
         job.run();

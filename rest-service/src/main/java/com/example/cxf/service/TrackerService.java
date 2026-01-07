@@ -7,7 +7,7 @@ import org.apache.cxf.jaxrs.client.JAXRSClientFactory;
 
 import java.util.Collections;
 
-public class TrackerService {
+public class TrackerService implements UetrProcessor {
     private final TrackerFrontEndApi proxy;
 
     public TrackerService(String baseUrl) {
@@ -15,6 +15,16 @@ public class TrackerService {
                 Collections.singletonList(new JacksonJsonProvider()));
     }
 
+    @Override
+    public String[] loadUetrs() {
+        String[] uetrs = new String[10];
+        for (int i = 0; i < 10; i++) {
+            uetrs[i] = java.util.UUID.randomUUID().toString();
+        }
+        return uetrs;
+    }
+
+    @Override
     public PaymentTransaction166 getTransaction(String uetr) {
         try {
             return proxy.getPaymentTransactionInfo(uetr);
