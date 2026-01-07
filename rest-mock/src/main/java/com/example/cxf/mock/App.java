@@ -4,6 +4,8 @@ import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
 import org.apache.cxf.jaxrs.JAXRSServerFactoryBean;
 import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
 
+import org.apache.cxf.jaxrs.validation.JAXRSBeanValidationInInterceptor;
+
 import java.util.Collections;
 
 public class App {
@@ -13,6 +15,7 @@ public class App {
         sf.setResourceProvider(TrackerApiServiceImpl.class,
                 new SingletonResourceProvider(new TrackerApiServiceImpl()));
         sf.setProviders(Collections.singletonList(new JacksonJsonProvider()));
+        sf.setInInterceptors(Collections.singletonList(new JAXRSBeanValidationInInterceptor()));
         sf.setAddress("http://localhost:9000/");
 
         sf.create();
