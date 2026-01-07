@@ -30,6 +30,19 @@ public class UetrJob {
                     PaymentTransaction166 tx = service.getTransaction(uetr);
                     if (tx != null) {
                         System.out.println("Successfully retrieved transaction: " + tx.getUETR());
+                        
+                        // Apply Visitors
+                        new com.example.cxf.job.visitor.AuditingVisitor().visit(tx);
+                        
+                        com.example.cxf.job.visitor.AsciiDocVisitor adoc = new com.example.cxf.job.visitor.AsciiDocVisitor();
+                        adoc.visit(tx);
+                        // In a real app, we'd save this to a file
+                        System.out.println("AsciiDoc generated (length): " + adoc.getAsciiDoc().length());
+
+                        com.example.cxf.job.visitor.PlantUmlVisitor puml = new com.example.cxf.job.visitor.PlantUmlVisitor();
+                        puml.visit(tx);
+                        System.out.println("PlantUML generated (length): " + puml.getPlantUml().length());
+                        
                     } else {
                         System.out.println("Transaction not found for UETR: " + uetr);
                     }
