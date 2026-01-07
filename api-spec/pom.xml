@@ -56,7 +56,8 @@
                             <apiPackage>com.example.cxf.api</apiPackage>
                             <modelPackage>com.example.cxf.model</modelPackage>
                             <importMappings>
-                                <importMapping>UserProfile=com.example.cxf.model.UserProfile</importMapping>
+                                <importMapping>PaymentTransaction166=com.example.cxf.model.PaymentTransaction166</importMapping>
+                                <importMapping>ErrorMessage=com.example.cxf.model.ErrorMessage</importMapping>
                             </importMappings>
                             <configOptions>
                                 <sourceFolder>src/gen/java</sourceFolder>

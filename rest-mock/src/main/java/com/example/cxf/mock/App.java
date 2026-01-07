@@ -9,14 +9,14 @@ import java.util.Collections;
 public class App {
     public static void main(String[] args) throws Exception {
         JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
-        sf.setResourceClasses(UserProfileServiceImpl.class);
-        sf.setResourceProvider(UserProfileServiceImpl.class,
-                new SingletonResourceProvider(new UserProfileServiceImpl()));
+        sf.setResourceClasses(TrackerApiServiceImpl.class);
+        sf.setResourceProvider(TrackerApiServiceImpl.class,
+                new SingletonResourceProvider(new TrackerApiServiceImpl()));
         sf.setProviders(Collections.singletonList(new JacksonJsonProvider()));
         sf.setAddress("http://localhost:9000/");
 
         sf.create();
-        System.out.println("Server ready at http://localhost:9000/");
-        Thread.sleep(Long.MAX_VALUE); // Keep running
+        System.out.println("Tracker Mock Server ready at http://localhost:9000/");
+        Thread.sleep(Long.MAX_VALUE);
     }
 }
