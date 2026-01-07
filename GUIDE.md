@@ -39,6 +39,53 @@ public class UetrJob {
 ### C. Internalized Business Logic
 By moving `loadUetrs()` to the `rest-service` module, we ensure that the logic for "what to process" remains close to the data access layer, while the `job` module focuses purely on orchestration and rate limiting.
 
+---
+
+## 4. Advanced: The Visitor Pattern for Extensibility
+
+To implement features like **Redacted Auditing**, **AsciiDoc Documentation**, and **PlantUML DSL** generation without polluting the generated domain models (`PaymentTransaction166`, etc.), the Visitor Pattern is the ideal architectural choice.
+
+### A. The Mechanics
+Normally, generated code is hard to modify. In a "purer" Visitor implementation, each DTO would have an `accept(Visitor v)` method. Since these are generated, we can:
+1.  Customize the OpenAPI Generator template to add the method.
+2.  Use a "Reflective Visitor" or a "Wrapper Visitor" if code modification is restricted.
+
+### B. Use Case 1: Redacted Auditing
+A Visitor can traverse the `PaymentTransaction` object graph and build a JSON/String representation while applying masking rules.
+
+```java
+public class AuditingVisitor implements Visitor {
+    public void visit(PaymentTransaction166 tx) {
+        log("Transaction: " + tx.getUETR());
+        // Delegate to child objects
+        tx.getRouting().accept(this);
+    }
+
+    public void visit(TransactionRouting1 routing) {
+        // REDACT identifying info
+        log("Routing: [FROM: " + mask(routing.getFrom()) + "]");
+    }
+}
+```
+
+### C. Use Case 2: AsciiDoc Generation
+The same object graph can be visited by a `DocumentationVisitor` that outputs `.adoc` format. This allows you to generate live technical documentation from actual mock data.
+
+```java
+public class AsciiDocVisitor implements Visitor {
+    public void visit(PaymentTransaction166 tx) {
+        writer.println("== Transaction: " + tx.getUETR());
+    }
+}
+```
+
+### D. Use Case 3: PlantUML DSL
+Generating a sequence diagram from a complex transaction path is simple with a Visitor. The Visitor collects "From/To" pairs across the routing graph and formats them as `Source -> Target : Label`.
+
+### 5. Why use the Visitor here?
+- **Separation of Concerns**: The domain model remains a "data bag." Business logic (auditing, doc gen, diagramming) lives in specialized Visitor implementations.
+- **Open-Closed Principle**: You can add a new operation (e.g., "JSON Export") just by creating a new `ExportVisitor`, without touching any existing code.
+
 ### C. Bean Validation (JSR 380)
 We utilize Java 17 compatible **Hibernate Validator 8.x**. The code generator translates OpenAPI patterns directly into Java annotations:
 - **OpenAPI**: `pattern: '^[a-f0-9]{8}-...'`
