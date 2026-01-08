@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import org.apache.cxf.endpoint.Server;
 
+import jakarta.ws.rs.core.Response;
 import java.util.Collections;
 
 public class TrackerPropertyTest {
@@ -38,13 +39,26 @@ public class TrackerPropertyTest {
 
         sf.setProviders(java.util.Arrays.asList(
                 new JacksonJsonProvider(),
-                new org.apache.cxf.jaxrs.validation.ValidationExceptionMapper()
+                new org.apache.cxf.jaxrs.validation.ValidationExceptionMapper(),
+                new BasicAuthFilter()
         ));
         sf.setInInterceptors(Collections.singletonList(new org.apache.cxf.jaxrs.validation.JAXRSBeanValidationInInterceptor()));
         sf.setAddress(BASE_URL);
         server = sf.create();
 
-        trackerService = new TrackerService(BASE_URL);
+        trackerService = new TrackerService(BASE_URL, "admin", "password");
+    }
+
+    @Test
+    public void testUnauthorizedAccess() {
+        TrackerService unauthorizedService = new TrackerService(BASE_URL, "wrong", "wrong");
+        try {
+            unauthorizedService.getTransaction("00f4be35-76f2-45c8-b4b3-565bbac5e86b");
+            fail("Should have thrown NotAuthorizedException");
+        } catch (jakarta.ws.rs.NotAuthorizedException e) {
+            // Success: 401 received
+            assertEquals(Response.Status.UNAUTHORIZED.getStatusCode(), e.getResponse().getStatus());
+        }
     }
 
     @AfterAll

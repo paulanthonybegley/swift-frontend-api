@@ -20,8 +20,8 @@ public class App {
         sf.setResourceProvider(InternalUetrController.class,
                 new SingletonResourceProvider(new InternalUetrController(store)));
 
-        sf.setProviders(Collections.singletonList(new JacksonJsonProvider()));
-        sf.setInInterceptors(Collections.singletonList(new JAXRSBeanValidationInInterceptor()));
+        sf.setProviders(java.util.Arrays.asList(new JacksonJsonProvider(), new BasicAuthFilter()));
+        sf.setInInterceptors(java.util.Arrays.asList(new JAXRSBeanValidationInInterceptor()));
         sf.setAddress("http://localhost:9000/");
 
         sf.create();
