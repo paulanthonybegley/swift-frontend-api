@@ -23,15 +23,19 @@ public class TrackerPropertyTest {
 
     @BeforeAll
     public static void startServer() {
-        store = new TransactionStateStoreImpl();
-        
+        // Use a test-specific DB file
+        java.io.File dbFile = new java.io.File("test_uetrs.db");
+        if (dbFile.exists()) dbFile.delete();
+
+        store = new SqliteTransactionStateStoreImpl("test_uetrs.db");
+
         JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
         sf.setResourceClasses(TrackerApiServiceImpl.class, InternalUetrController.class);
         sf.setResourceProvider(TrackerApiServiceImpl.class,
                 new SingletonResourceProvider(new TrackerApiServiceImpl(store)));
         sf.setResourceProvider(InternalUetrController.class,
                 new SingletonResourceProvider(new InternalUetrController(store)));
-                
+
         sf.setProviders(java.util.Arrays.asList(
                 new JacksonJsonProvider(),
                 new org.apache.cxf.jaxrs.validation.ValidationExceptionMapper()
@@ -39,7 +43,7 @@ public class TrackerPropertyTest {
         sf.setInInterceptors(Collections.singletonList(new org.apache.cxf.jaxrs.validation.JAXRSBeanValidationInInterceptor()));
         sf.setAddress(BASE_URL);
         server = sf.create();
-        
+
         trackerService = new TrackerService(BASE_URL);
     }
 
@@ -49,6 +53,7 @@ public class TrackerPropertyTest {
             server.stop();
             server.destroy();
         }
+        new java.io.File("test_uetrs.db").delete();
     }
 
     @Property
@@ -95,6 +100,28 @@ public class TrackerPropertyTest {
         // 5. loadUetrs should NOT return this UETR anymore
         String[] activeFinal = trackerService.loadUetrs();
         assertFalse(java.util.Arrays.asList(activeFinal).contains(uetr));
+    }
+
+    @Test
+    public void testPersistenceAcrossRestarts() {
+        String uetr = "11111111-2222-4333-8444-555555555555";
+        String dbName = "persistence_test.db";
+        java.io.File dbFile = new java.io.File(dbName);
+        if (dbFile.exists()) dbFile.delete();
+
+        try {
+            // 1. First Session
+            TransactionStateStore store1 = new SqliteTransactionStateStoreImpl(dbName);
+            PaymentTransaction166 tx1 = store1.getOrUpdate(uetr);
+            assertEquals("INIT", tx1.getTransactionStatus());
+
+            // 2. Second Session (Simulate Restart)
+            TransactionStateStore store2 = new SqliteTransactionStateStoreImpl(dbName);
+            PaymentTransaction166 tx2 = store2.getOrUpdate(uetr);
+            assertEquals("PDNG", tx2.getTransactionStatus(), "State should be PDNG because it was INIT in previous session");
+        } finally {
+            if (dbFile.exists()) dbFile.delete();
+        }
     }
 
     @Test

@@ -10,7 +10,7 @@ import java.util.Collections;
 
 public class App {
     public static void main(String[] args) throws Exception {
-        TransactionStateStore store = new TransactionStateStoreImpl();
+        TransactionStateStore store = new SqliteTransactionStateStoreImpl("uetrs.db");
 
         JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
         sf.setResourceClasses(TrackerApiServiceImpl.class, InternalUetrController.class);
