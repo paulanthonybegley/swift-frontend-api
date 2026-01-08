@@ -7,5 +7,8 @@ run:
 test:
 	./mvnw test
 
+test-debug:
+	./mvnw test -Dorg.apache.cxf.logging.enabled=true
+
 stop:
 	pkill -f "rest-mock"

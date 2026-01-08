@@ -6,8 +6,6 @@ import org.apache.cxf.jaxrs.lifecycle.SingletonResourceProvider;
 
 import org.apache.cxf.jaxrs.validation.JAXRSBeanValidationInInterceptor;
 
-import java.util.Collections;
-
 public class App {
     public static void main(String[] args) throws Exception {
         TransactionStateStore store = StorageFactory.create();
