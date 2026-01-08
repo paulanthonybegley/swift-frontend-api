@@ -27,7 +27,7 @@ public class TrackerPropertyTest {
         java.io.File dbFile = new java.io.File("test_uetrs.db");
         if (dbFile.exists()) dbFile.delete();
 
-        store = new SqliteTransactionStateStoreImpl("test_uetrs.db");
+        store = StorageFactory.create("test_uetrs.db");
 
         JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
         sf.setResourceClasses(TrackerApiServiceImpl.class, InternalUetrController.class);
