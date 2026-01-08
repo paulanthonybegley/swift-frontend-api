@@ -16,26 +16,39 @@ public class TransactionStateStoreImpl implements TransactionStateStore {
 
         PaymentTransaction166 tx = new PaymentTransaction166();
         tx.setUETR(uetr);
-        tx.setTransactionInitiationDateTime("2026-01-07T14:50:00Z");
-        tx.setTransactionLastUpdateDateTime("2026-01-07T14:55:00Z");
+        tx.setTransactionInitiationDateTime("2025-05-23T10:00:40Z");
 
         List<TransactionRouting1> routing = new ArrayList<>();
         routing.add(new TransactionRouting1().from("BANKBEBICXX").to("BANKUSBICXX"));
-        tx.setTransactionRouting(routing);
 
         tx.setTransactionInstructedAmount(new PaymentTransaction166TransactionInstructedAmount()
-                .currency("USD").amount("1000.00"));
+                .currency("USD").amount("100000"));
 
         if (currentCall == 1) {
             tx.setTransactionStatus("INIT");
             tx.setTransactionStatusDescription("Initial Status");
+            tx.setTransactionStatusReason("Initialized");
+            tx.setTransactionLastUpdateDateTime("2025-05-23T10:00:40Z");
+            tx.setTransactionRouting(routing);
         } else if (currentCall <= 3) {
             tx.setTransactionStatus("PDNG");
             tx.setTransactionStatusDescription("Payment Pending");
+            tx.setTransactionStatusReason("Processing");
+            tx.setTransactionLastUpdateDateTime("2025-05-23T10:02:40Z");
+            tx.setTransactionRouting(routing);
         } else {
             tx.setTransactionStatus("ACCC");
-            tx.setTransactionStatusDescription("Settlement Completed");
-            tx.setTransactionCompletionDateTime("2026-01-07T15:00:00Z");
+            tx.setTransactionStatusDescription("Payment credited to beneficiary bank");
+            tx.setTransactionStatusReason("Credited");
+            tx.setTransactionLastUpdateDateTime("2025-05-23T10:05:40Z");
+            tx.setTransactionCompletionDateTime("2025-05-23T10:05:40Z");
+
+            // Add the second hop for ACCC
+            routing.add(new TransactionRouting1().from("BANKUSBICXX").to("BANKFRBICXX"));
+            tx.setTransactionRouting(routing);
+
+            tx.setTransactionConfirmedAmount(new PaymentTransaction166TransactionConfirmedAmount()
+                    .currency("USD").amount("99550"));
         }
 
         return tx;

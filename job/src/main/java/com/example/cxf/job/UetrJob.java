@@ -36,12 +36,11 @@ public class UetrJob {
                         
                         com.example.cxf.job.visitor.AsciiDocVisitor adoc = new com.example.cxf.job.visitor.AsciiDocVisitor();
                         adoc.visit(tx);
-                        // In a real app, we'd save this to a file
-                        System.out.println("AsciiDoc generated (length): " + adoc.getAsciiDoc().length());
+                        System.out.println("--- Generated AsciiDoc ---\n" + adoc.getAsciiDoc() + "\n--------------------------");
 
                         com.example.cxf.job.visitor.PlantUmlVisitor puml = new com.example.cxf.job.visitor.PlantUmlVisitor();
                         puml.visit(tx);
-                        System.out.println("PlantUML generated (length): " + puml.getPlantUml().length());
+                        System.out.println("--- Generated PlantUML ---\n" + puml.getPlantUml() + "\n--------------------------");
                         
                     } else {
                         System.out.println("Transaction not found for UETR: " + uetr);

@@ -13,6 +13,11 @@ public class PlantUmlVisitor implements PaymentVisitor {
         pw.println("@startuml");
         pw.println("title Transaction Flow: " + tx.getUETR());
         pw.println("autonumber");
+        
+        pw.println("note over \"BANKBEBICXX\" : Status: " + tx.getTransactionStatus() + 
+                   "\\n" + tx.getTransactionStatusDescription() + 
+                   "\\nInitiated: " + tx.getTransactionInitiationDateTime());
+
         if (tx.getTransactionRouting() != null) {
             for (TransactionRouting1 routing : tx.getTransactionRouting()) {
                 visit(routing);

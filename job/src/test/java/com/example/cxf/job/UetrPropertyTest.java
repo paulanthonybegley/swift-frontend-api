@@ -24,7 +24,12 @@ public class UetrPropertyTest {
             if (arg.contains("fail")) {
                 throw new RuntimeException("Induced failure");
             }
-            return new PaymentTransaction166();
+            PaymentTransaction166 tx = new PaymentTransaction166();
+            tx.setUETR(arg);
+            tx.setTransactionStatus("PDNG");
+            tx.setTransactionStatusDescription("Processing...");
+            tx.addTransactionRoutingItem(new com.example.cxf.model.TransactionRouting1().from("SENDER").to("RECEIVER"));
+            return tx;
         });
 
         UetrJob job = new UetrJob(service);

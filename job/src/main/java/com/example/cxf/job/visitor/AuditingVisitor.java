@@ -8,6 +8,21 @@ public class AuditingVisitor implements PaymentVisitor {
     public void visit(PaymentTransaction166 tx) {
         System.out.println("[AUDIT] Transaction ID: " + tx.getUETR());
         System.out.println("[AUDIT] Status: " + tx.getTransactionStatus());
+        System.out.println("[AUDIT] Description: " + tx.getTransactionStatusDescription());
+        System.out.println("[AUDIT] Reason: " + tx.getTransactionStatusReason());
+        System.out.println("[AUDIT] Dates: Initiated=" + tx.getTransactionInitiationDateTime() + 
+                           ", LastUpdate=" + tx.getTransactionLastUpdateDateTime() + 
+                           ", Completion=" + tx.getTransactionCompletionDateTime());
+        
+        if (tx.getTransactionInstructedAmount() != null) {
+            System.out.println("[AUDIT] Instructed Amount: " + tx.getTransactionInstructedAmount().getAmount() + 
+                               " " + tx.getTransactionInstructedAmount().getCurrency());
+        }
+        if (tx.getTransactionConfirmedAmount() != null) {
+            System.out.println("[AUDIT] Confirmed Amount: " + tx.getTransactionConfirmedAmount().getAmount() + 
+                               " " + tx.getTransactionConfirmedAmount().getCurrency());
+        }
+
         if (tx.getTransactionRouting() != null) {
             for (TransactionRouting1 routing : tx.getTransactionRouting()) {
                 visit(routing);

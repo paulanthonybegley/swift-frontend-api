@@ -16,6 +16,24 @@ public class AsciiDocVisitor implements PaymentVisitor {
         pw.println("== Status Information");
         pw.println("* Status: " + tx.getTransactionStatus());
         pw.println("* Description: " + tx.getTransactionStatusDescription());
+        if (tx.getTransactionStatusReason() != null) {
+            pw.println("* Reason: " + tx.getTransactionStatusReason());
+        }
+        pw.println();
+        pw.println("== Lifecycle Dates");
+        pw.println("* Initiated: " + tx.getTransactionInitiationDateTime());
+        pw.println("* Last Update: " + tx.getTransactionLastUpdateDateTime());
+        if (tx.getTransactionCompletionDateTime() != null) {
+            pw.println("* Completion: " + tx.getTransactionCompletionDateTime());
+        }
+        pw.println();
+        pw.println("== Financial Details");
+        if (tx.getTransactionInstructedAmount() != null) {
+            pw.println("* Instructed: " + tx.getTransactionInstructedAmount().getAmount() + " " + tx.getTransactionInstructedAmount().getCurrency());
+        }
+        if (tx.getTransactionConfirmedAmount() != null) {
+            pw.println("* Confirmed: " + tx.getTransactionConfirmedAmount().getAmount() + " " + tx.getTransactionConfirmedAmount().getCurrency());
+        }
         pw.println();
         pw.println("== Routing Details");
         pw.println("[cols=\"1,1\", options=\"header\"]");
