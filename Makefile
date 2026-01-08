@@ -2,7 +2,20 @@ build:
 	./mvnw clean install
 
 run:
-	java -jar rest-mock/target/*-shaded.jar
+	java -jar rest-mock/target/rest-mock-1.0.0-SNAPSHOT.jar
+
+run-job:
+	java -jar job/target/job-1.0.0-SNAPSHOT.jar
+
+run-all:
+	@echo "Starting Mock Server in background..."
+	@java -jar rest-mock/target/rest-mock-1.0.0-SNAPSHOT.jar > mock.log 2>&1 &
+	@echo "Waiting for Mock Server to start..."
+	@sleep 5
+	@echo "Starting Job Processor..."
+	@java -jar job/target/job-1.0.0-SNAPSHOT.jar
+	@echo "Stopping Mock Server..."
+	@pkill -f "rest-mock"
 
 test:
 	./mvnw test

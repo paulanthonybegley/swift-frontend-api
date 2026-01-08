@@ -14,6 +14,12 @@ public class UetrJob {
         this.service = service;
     }
 
+    public void offer(String uetr) {
+        if (uetr != null && !uetr.isBlank()) {
+            this.queue.offer(uetr);
+        }
+    }
+
     public void run() {
         String[] uetrs = service.loadUetrs();
         if (uetrs != null) {

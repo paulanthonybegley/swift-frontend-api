@@ -4,141 +4,70 @@ This guide explains the architectural design, module responsibilities, and imple
 
 ## 1. Module Responsibilities
 
-The project is divided into 6 modules to ensure a clean separation of concerns, where the OpenAPI specification serves as the formal contract.
+The project is divided into 6 modules to ensure a clean separation of concerns.
 
 | Module | Responsibility | Why? |
 | :--- | :--- | :--- |
-| **root** | Parent POM | Centralizes dependency versions (BOMs) and plugin management to ensure consistency across all modules. |
-| **api-spec** | Interface Contract | Uses the `jaxrs-cxf` generator to create Java interfaces from `openapi.json`. It owns the "Contract". |
-| **rest-model** | Data Transfer Objects | Generates POJOs (Plain Old Java Objects) used for serialization. Shared by both server and client. |
-| **rest-mock** | Mock Implementation | Provides a concrete implementation of the generated interfaces. Runs an embedded Jetty server for testing. |
-| **rest-service**| Client Library | Wraps the CXF `JAXRSClientFactory` to provide a high-level service API for other components. |
-| **job** | Orchestrator | Implements batch processing logic (e.g., rate limiting) using the client library. |
+| **root** | Parent POM | Centralizes dependency versions (BOMs) and plugin management to ensure consistency. |
+| **api-spec** | Interface Contract | Uses `jaxrs-cxf` generator to create Java interfaces from `openapi.json`. It owns the "Contract". |
+| **rest-model** | Data Transfer Objects | Generates POJOs used for serialization. Shared by both server and client. |
+| **rest-mock** | Mock Implementation | Implements the generated interfaces. Includes SQLite persistence and Basic Auth. |
+| **rest-service**| Client Library | Wraps CXF `JAXRSClientFactory`. Includes the **Logging Decorator**. |
+| **job** | Orchestrator | The batch processor. Runs the integrated flow and applies the **Visitor Pattern**. |
 
 ---
 
-## 2. Java 17 Features & Modern Implementation
+## 2. Security & Persistence
 
-### A. Compact Implementation with Jakarta EE
-We use **Jakarta EE 9/10** namespaces (`jakarta.ws.rs.*`) which is the modern standard for Java 17+, moving away from the legacy `javax` namespace.
+### A. JAX-RS Filters for Security
+We implement **Basic Authentication** using a `ContainerRequestFilter`. This is preferred over CXF Interceptors for standard JAX-RS portability.
+- **Provider**: `BasicAuthFilter`
+- **Mechanism**: Decodes `Authorization: Basic ...` header and validates against a temporary identity store.
 
-### B. High-Precision Rate Limiting & Decoupling
-The `job` module utilizes the **Dependency Inversion Principle**. It depends on the `UetrProcessor` interface rather than a concrete implementation.
+### B. Dynamic Persistence (Factory Pattern)
+The `rest-mock` server utilizes a `StorageFactory` to decide at runtime between **In-Memory (ConcurrentHashMap)** and **Persistent (SQLite)** storage.
+- **SQLite Implementation**: Uses `spring-jdbc` (`JdbcTemplate`) for robust, boilerplate-free SQL interactions within a lightweight embedded database.
+- **Benefit**: Allows the server to retain state across restarts, making it ideal for multi-stage transaction testing.
 
-```java
-public class UetrJob {
-    private final UetrProcessor service; // Decoupled Dependency
-    // ...
-    public void run() {
-        String[] uetrs = service.loadUetrs(); // Internalized loading
-        // ...
-    }
-}
-```
+---
 
-### Polling & Stateful Mocking
-The `job` module is designed for continuous polling. To facilitate this, the `rest-mock` server implements a **Stateful Lifecycle State Machine**:
+## 3. Observability & The Decorator Pattern
 
-- **TransactionStateStore**: Tracks the number of times a specific UETR has been accessed.
-- **State Progression**:
-  - **1st Call**: Returns status `INIT`. The UETR is added to the internal active map.
-  - **2nd-3rd Calls**: Returns status `PDNG` (Pending).
-  - **4th Call+**: Returns status `ACCC` (Accepted).
-- **Internal Loopback**: The mock exposes `GET /internal/active-uetrs` which the `rest-service` uses to populate the job's queue. This ensures that only transactions needing attention are processed, and once they reach `ACCC`, they naturally drop out of the system.
+We employ a dual-layered logging strategy to provide 360-degree visibility.
 
-### Dynamic Design Patterns
-- **Visitor Pattern**: Used in the `job` module for:
-  - **Auditing**: Redacting BICs before logging.
-  - **Documentation**: Generating AsciiDoc reports.
-  - **Diagrams**: Generating PlantUML sequence DSL for transaction routing.
-- **Strategy Pattern (Planned)**: For handling different message versions (SR2024 vs SR2025).
+### A. Wire-Level Logging (CXF Feature)
+Enabled via `cxf-rt-features-logging`. It captures the raw HTTP request/response headers and payloads. Useful for debugging "What went over the wire".
 
-### C. Internalized Business Logic
-By moving `loadUetrs()` to the `rest-service` module, we ensure that the logic for "what to process" remains close to the data access layer, while the `job` module focuses purely on orchestration and rate limiting.
+### B. Method-Level Logging (Decorator Pattern)
+We use the **Decorator Pattern** to wrap the `UetrProcessor` with a `LoggingUetrProcessor`.
+- **Transparency**: The caller (Job module) doesn't know it's being logged.
+- **Context**: Captures method parameters, return values, timing, and specific Java exceptions before they are converted to generic HTTP errors.
 
 ---
 
 ## 4. Advanced: The Visitor Pattern for Extensibility
 
-To implement features like **Redacted Auditing**, **AsciiDoc Documentation**, and **PlantUML DSL** generation without polluting the generated domain models (`PaymentTransaction166`, etc.), the Visitor Pattern is the ideal architectural choice.
+To implement features like **Auditing**, **AsciiDoc**, and **PlantUML** without polluting generated models, we use the Visitor Pattern.
 
-### A. The Mechanics
-Normally, generated code is hard to modify. In a "purer" Visitor implementation, each DTO would have an `accept(Visitor v)` method. Since these are generated, we can:
-1.  Customize the OpenAPI Generator template to add the method.
-2.  Use a "Reflective Visitor" or a "Wrapper Visitor" if code modification is restricted.
-
-### B. Use Case 1: Redacted Auditing
-A Visitor can traverse the `PaymentTransaction` object graph and build a JSON/String representation while applying masking rules.
-
-```java
-public class AuditingVisitor implements Visitor {
-    public void visit(PaymentTransaction166 tx) {
-        log("Transaction: " + tx.getUETR());
-        // Delegate to child objects
-        tx.getRouting().accept(this);
-    }
-
-    public void visit(TransactionRouting1 routing) {
-        // REDACT identifying info
-        log("Routing: [FROM: " + mask(routing.getFrom()) + "]");
-    }
-}
-```
-
-### C. Use Case 2: AsciiDoc Generation
-The same object graph can be visited by a `DocumentationVisitor` that outputs `.adoc` format. This allows you to generate live technical documentation from actual mock data.
-
-```java
-public class AsciiDocVisitor implements Visitor {
-    public void visit(PaymentTransaction166 tx) {
-        writer.println("== Transaction: " + tx.getUETR());
-    }
-}
-```
-
-### D. Use Case 3: PlantUML DSL
-Generating a sequence diagram from a complex transaction path is simple with a Visitor. The Visitor collects "From/To" pairs across the routing graph and formats them as `Source -> Target : Label`.
-
-### 5. Why use the Visitor here?
-- **Separation of Concerns**: The domain model remains a "data bag." Business logic (auditing, doc gen, diagramming) lives in specialized Visitor implementations.
-- **Open-Closed Principle**: You can add a new operation (e.g., "JSON Export") just by creating a new `ExportVisitor`, without touching any existing code.
-
-### C. Bean Validation (JSR 380)
-We utilize Java 17 compatible **Hibernate Validator 8.x**. The code generator translates OpenAPI patterns directly into Java annotations:
-- **OpenAPI**: `pattern: '^[a-f0-9]{8}-...'`
-- **Java**: `@Pattern(regexp="^[a-f0-9]{8}-...")`
-This allows for declartive validation without manual `if-else` blocks.
-
-### D. Modern Testing Patterns
-- **Property-Based Testing (jqwik)**: Instead of writing 10 static tests, we define properties that must hold true for *any* input.
-- **JUnit 5 (Jupiter)**: Uses the modern JUnit Platform, allowing for better extension models and integration with tools like Mockito.
+### Use Cases:
+- **Auditing**: Traverses the graph to build a flattened business log.
+- **AsciiDoc**: Generates technical manuals directly from mock data.
+- **PlantUML**: Visualizes complex transaction routings as sequence diagrams.
 
 ---
 
-## 3. Implementation Flow
+## 5. Operational Excellence
 
-```mermaid
-sequenceDiagram
-    participant J as Job Module
-    participant S as Tracker Service (Client)
-    participant M as Mock Server (Jetty)
-    participant V as Validation Layer
+### A. Executable "Fat" JARs
+Both the `rest-mock` and `job` modules use the `maven-shade-plugin`.
+- **Merging**: We use `AppendingTransformer` for `META-INF/cxf/bus-extensions.txt` to ensure CXF can find its HTTP transports even when shaded into a single JAR.
 
-    J->>S: getTransaction(uetr)
-    S->>M: HTTP GET /payment-transactions/{uetr}
-    M->>V: Validate Path Parameter
-    alt Invalid UETR
-        V-->>S: 400 Bad Request
-        S-->>J: Throw BadRequestException
-    else Valid UETR
-        M->>M: Implementation Logic
-        M-->>S: 200 OK (JSON)
-        S-->>J: Return PaymentTransaction166
-    end
-    J->>J: Wait 500ms (Rate Limit)
-```
+### B. Automated Orchestration (Makefile)
+The `Makefile` serves as the entry point for local development.
+- **`make run-all`**: A sophisticated target that backgrounds the server, waits for readiness, runs the processor, and cleans up. This ensures a consistent developer experience "out of the box".
 
-## 4. Why this Architecture?
-1. **Source of Truth**: If the endpoint changes in `openapi.json`, every module (`api-spec`, `rest-mock`, `rest-service`) fails to compile until synchronized. You cannot have "stale" code.
-2. **Atomic Queueing**: Using `queue.poll()` ensures that once an item is picked, it is out of the queue, satisfying its "removal on success or error" requirement naturally.
-3. **Decoupled Client**: The `job` module doesn't know about HTTP or CXF; it only knows about the `TrackerService` interface, making it highly testable.
+---
+
+## 6. Modern Testing Patterns
+- **Property-Based Testing (jqwik)**: Defines properties that must hold true for *any* UETR or message structure.
+- **JUnit 5 (Jupiter)**: The modern standard for test orchestration and Mockito integration.
