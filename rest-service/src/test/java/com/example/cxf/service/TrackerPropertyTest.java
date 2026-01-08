@@ -19,7 +19,7 @@ public class TrackerPropertyTest {
 
     private static Server server;
     private static final String BASE_URL = "http://localhost:9001/";
-    private static TrackerService trackerService;
+    private static UetrProcessor trackerService;
     private static TransactionStateStore store;
 
     @BeforeAll
@@ -46,12 +46,12 @@ public class TrackerPropertyTest {
         sf.setAddress(BASE_URL);
         server = sf.create();
 
-        trackerService = new TrackerService(BASE_URL, "admin", "password");
+        trackerService = new LoggingUetrProcessor(new TrackerService(BASE_URL, "admin", "password"));
     }
 
     @Test
     public void testUnauthorizedAccess() {
-        TrackerService unauthorizedService = new TrackerService(BASE_URL, "wrong", "wrong");
+        UetrProcessor unauthorizedService = new LoggingUetrProcessor(new TrackerService(BASE_URL, "wrong", "wrong"));
         try {
             unauthorizedService.getTransaction("00f4be35-76f2-45c8-b4b3-565bbac5e86b");
             fail("Should have thrown NotAuthorizedException");
