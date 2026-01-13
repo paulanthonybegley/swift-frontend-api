@@ -11,7 +11,7 @@ run-all:
 	@echo "Starting Mock Server in background..."
 	@java -jar rest-mock/target/rest-mock-1.0.0-SNAPSHOT.jar > mock.log 2>&1 &
 	@echo "Waiting for Mock Server to start..."
-	@sleep 5
+	@sleep 10
 	@echo "Starting Job Processor..."
 	@java -jar job/target/job-1.0.0-SNAPSHOT.jar
 	@echo "Stopping Mock Server..."
@@ -25,3 +25,8 @@ test-debug:
 
 stop:
 	pkill -f "rest-mock"
+
+clean-db:
+	@echo "Cleaning databases..."
+	@rm -f uetrs.db service_uetrs.db test_*.db mock.log
+	@echo "Databases cleaned"

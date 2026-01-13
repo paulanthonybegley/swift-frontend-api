@@ -23,12 +23,7 @@ public class App {
 
             // 3. Initialize and Run the Job
             UetrJob job = new UetrJob(loggingService);
-            
-            // 4. Seeding: If loadUetrs returns nothing (empty store), 
-            // seed with demonstration UETRs so the job has work to do.
-            job.offer("00f4be35-76f2-45c8-b4b3-565bbac5e86b");
-            job.offer("eec67498-8422-4a00-9844-325d7e305e75");
-
+            job.setContinuous(true);
             job.run();
 
             System.out.println("Job Processor completed successfully.");

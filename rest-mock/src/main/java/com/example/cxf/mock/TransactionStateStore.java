@@ -7,4 +7,5 @@ public interface TransactionStateStore {
     PaymentTransaction166 getOrUpdate(String uetr);
 
     List<String> getActiveUetrs();
+
 }

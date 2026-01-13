@@ -11,12 +11,10 @@ public class App {
         TransactionStateStore store = StorageFactory.create();
 
         JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
-        sf.setResourceClasses(TrackerApiServiceImpl.class, InternalUetrController.class);
+        sf.setResourceClasses(TrackerApiServiceImpl.class);
 
         sf.setResourceProvider(TrackerApiServiceImpl.class,
                 new SingletonResourceProvider(new TrackerApiServiceImpl(store)));
-        sf.setResourceProvider(InternalUetrController.class,
-                new SingletonResourceProvider(new InternalUetrController(store)));
 
         sf.setProviders(java.util.Arrays.asList(new JacksonJsonProvider(), new BasicAuthFilter()));
         sf.setInInterceptors(java.util.Arrays.asList(new JAXRSBeanValidationInInterceptor()));

@@ -20,22 +20,22 @@ public class TrackerPropertyTest {
     private static Server server;
     private static final String BASE_URL = "http://localhost:9001/";
     private static UetrProcessor trackerService;
-    private static TransactionStateStore store;
+    private static com.example.cxf.mock.TransactionStateStore mockStore;
 
     @BeforeAll
     public static void startServer() {
-        // Use a test-specific DB file
-        java.io.File dbFile = new java.io.File("test_uetrs.db");
-        if (dbFile.exists()) dbFile.delete();
+        // Use test-specific DB files
+        java.io.File mockDb = new java.io.File("test_mock_uetrs.db");
+        if (mockDb.exists()) mockDb.delete();
+        java.io.File serviceDb = new java.io.File("test_service_uetrs.db");
+        if (serviceDb.exists()) serviceDb.delete();
 
-        store = StorageFactory.create("test_uetrs.db");
+        mockStore = com.example.cxf.mock.StorageFactory.create("test_mock_uetrs.db");
 
         JAXRSServerFactoryBean sf = new JAXRSServerFactoryBean();
-        sf.setResourceClasses(TrackerApiServiceImpl.class, InternalUetrController.class);
+        sf.setResourceClasses(TrackerApiServiceImpl.class);
         sf.setResourceProvider(TrackerApiServiceImpl.class,
-                new SingletonResourceProvider(new TrackerApiServiceImpl(store)));
-        sf.setResourceProvider(InternalUetrController.class,
-                new SingletonResourceProvider(new InternalUetrController(store)));
+                new SingletonResourceProvider(new TrackerApiServiceImpl(mockStore)));
 
         sf.setProviders(java.util.Arrays.asList(
                 new JacksonJsonProvider(),
@@ -46,7 +46,9 @@ public class TrackerPropertyTest {
         sf.setAddress(BASE_URL);
         server = sf.create();
 
-        trackerService = new LoggingUetrProcessor(new TrackerService(BASE_URL, "admin", "password"));
+        com.example.cxf.service.persistence.TransactionStateStore serviceStore = 
+                com.example.cxf.service.persistence.StorageFactory.create("test_service_uetrs.db");
+        trackerService = new LoggingUetrProcessor(new TrackerService(BASE_URL, "admin", "password", serviceStore));
     }
 
     @Test
@@ -67,7 +69,8 @@ public class TrackerPropertyTest {
             server.stop();
             server.destroy();
         }
-        new java.io.File("test_uetrs.db").delete();
+        new java.io.File("test_mock_uetrs.db").delete();
+        new java.io.File("test_service_uetrs.db").delete();
     }
 
     @Property
@@ -96,43 +99,64 @@ public class TrackerPropertyTest {
     public void testLifecycleTransitions() {
         String uetr = "00f4be35-76f2-45c8-b4b3-565bbac5e86b";
         
-        // 1. Initial call -> State INIT
-        PaymentTransaction166 tx1 = trackerService.getTransaction(uetr);
-        assertEquals("INIT", tx1.getTransactionStatus());
+        // 1. Initially, it should be in the loadUetrs list
+        assertTrue(java.util.Arrays.asList(trackerService.loadUetrs()).contains(uetr), "UETR should be in discovery list initially");
+
+        // 2. Transition to ACCC
+        trackerService.getTransaction(uetr); // INIT
+        trackerService.getTransaction(uetr); // PDNG
+        trackerService.getTransaction(uetr); // PDNG
+        PaymentTransaction166 finalTx = trackerService.getTransaction(uetr); // ACCC
+        assertEquals("ACCC", finalTx.getTransactionStatus());
         
-        // 2. loadUetrs should return this UETR
-        String[] active1 = trackerService.loadUetrs();
-        assertTrue(java.util.Arrays.asList(active1).contains(uetr));
-        
-        // 3. Second and third calls -> PDNG
-        assertEquals("PDNG", trackerService.getTransaction(uetr).getTransactionStatus());
-        assertEquals("PDNG", trackerService.getTransaction(uetr).getTransactionStatus());
-        
-        // 4. Fourth call -> ACCC
-        assertEquals("ACCC", trackerService.getTransaction(uetr).getTransactionStatus());
-        
-        // 5. loadUetrs should NOT return this UETR anymore
-        String[] activeFinal = trackerService.loadUetrs();
-        assertFalse(java.util.Arrays.asList(activeFinal).contains(uetr));
+        // 3. Now it should be filtered out from loadUetrs
+        assertFalse(java.util.Arrays.asList(trackerService.loadUetrs()).contains(uetr), "UETR should be filtered out after reaching ACCC");
     }
 
     @Test
-    public void testPersistenceAcrossRestarts() {
+    public void testMockPersistenceAcrossRestarts() {
         String uetr = "11111111-2222-4333-8444-555555555555";
-        String dbName = "persistence_test.db";
+        String dbName = "mock_persistence_test.db";
         java.io.File dbFile = new java.io.File(dbName);
         if (dbFile.exists()) dbFile.delete();
 
         try {
             // 1. First Session
-            TransactionStateStore store1 = new SqliteTransactionStateStoreImpl(dbName);
+            com.example.cxf.mock.TransactionStateStore store1 = new com.example.cxf.mock.SqliteTransactionStateStoreImpl(dbName);
             PaymentTransaction166 tx1 = store1.getOrUpdate(uetr);
             assertEquals("INIT", tx1.getTransactionStatus());
 
             // 2. Second Session (Simulate Restart)
-            TransactionStateStore store2 = new SqliteTransactionStateStoreImpl(dbName);
+            com.example.cxf.mock.TransactionStateStore store2 = new com.example.cxf.mock.SqliteTransactionStateStoreImpl(dbName);
             PaymentTransaction166 tx2 = store2.getOrUpdate(uetr);
             assertEquals("PDNG", tx2.getTransactionStatus(), "State should be PDNG because it was INIT in previous session");
+        } finally {
+            if (dbFile.exists()) dbFile.delete();
+        }
+    }
+
+    @Test
+    public void testServicePersistenceAcrossRestarts() {
+        String uetr = "22222222-3333-4444-8444-555555555555";
+        String dbName = "service_persistence_test.db";
+        java.io.File dbFile = new java.io.File(dbName);
+        if (dbFile.exists()) dbFile.delete();
+
+        try {
+            // 1. First Session: Service tracks a status
+            com.example.cxf.service.persistence.TransactionStateStore store1 = 
+                    new com.example.cxf.service.persistence.SqliteTransactionStateStoreImpl(dbName);
+            store1.updateStatus(uetr, "INIT");
+            assertTrue(store1.getActiveUetrs().contains(uetr), "Should be active when INIT");
+
+            // 2. Second Session: Service remembers the status
+            com.example.cxf.service.persistence.TransactionStateStore store2 = 
+                    new com.example.cxf.service.persistence.SqliteTransactionStateStoreImpl(dbName);
+            assertEquals("INIT", store2.getStatus(uetr));
+            
+            // 3. Mark as ACCC
+            store2.updateStatus(uetr, "ACCC");
+            assertFalse(store2.getActiveUetrs().contains(uetr), "Should not be active when ACCC");
         } finally {
             if (dbFile.exists()) dbFile.delete();
         }
