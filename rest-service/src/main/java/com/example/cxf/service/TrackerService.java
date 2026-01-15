@@ -50,21 +50,18 @@ public class TrackerService implements UetrProcessor {
 
     @Override
     public String[] loadUetrs() {
-        String[] allUetrs = store.getAllUetrs().toArray(new String[0]);
         String[] activeUetrs = store.getActiveUetrs().toArray(new String[0]);
 
-        System.out.println("allUetrs: " + allUetrs.length);
-        System.out.println("activeUetrs: " + activeUetrs.length);
-
-        // Configurable fallback: seed defaults if empty
+        // Configurable fallback: seed defaults ONLY if database is completely empty
+        // (fresh start)
+        // This prevents re-seeding after all UETRs reach ACCC status
         boolean seedEnabled = Boolean.parseBoolean(System.getProperty("service.seed.enabled", "true"));
-        if (seedEnabled && allUetrs.length == 0) {
+        if (seedEnabled && store.isEmpty()) {
             int seedCount = Integer.parseInt(System.getProperty("service.seed.count", "2"));
-            System.out.println("No active UETRs found. Seeding " + seedCount
-                    + " default UETRs (service.seed.enabled=true) and all is " + allUetrs.length + " active is "
-                    + activeUetrs.length);
+            System.out
+                    .println("Database is empty. Seeding " + seedCount + " default UETRs (service.seed.enabled=true)");
 
-            // Reset status for the first N default UETRs to make them active again
+            // Add default UETRs with null status (active)
             for (int i = 0; i < Math.min(seedCount, DEFAULT_UETRS.length); i++) {
                 store.updateStatus(DEFAULT_UETRS[i], null); // null status = active
             }

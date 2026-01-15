@@ -1,6 +1,5 @@
 package com.example.cxf.service.persistence;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,5 +36,10 @@ public class InMemoryTransactionStateStoreImpl implements TransactionStateStore 
     @Override
     public void addUetr(String uetr) {
         store.putIfAbsent(uetr, ""); // Empty status means active but unknown
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return store.isEmpty();
     }
 }

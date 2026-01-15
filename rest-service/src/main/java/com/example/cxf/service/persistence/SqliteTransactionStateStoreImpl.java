@@ -62,4 +62,17 @@ public class SqliteTransactionStateStoreImpl implements TransactionStateStore {
     public void addUetr(String uetr) {
         jdbcTemplate.update("INSERT OR IGNORE INTO service_transaction_states (uetr) VALUES (?)", uetr);
     }
+
+    @Override
+    public boolean isEmpty() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM service_transaction_states",
+                    Integer.class);
+            return count == null || count == 0;
+        } catch (Exception e) {
+            // Table doesn't exist or error - consider it empty
+            return true;
+        }
+    }
 }

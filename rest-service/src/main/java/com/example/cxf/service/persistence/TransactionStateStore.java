@@ -24,4 +24,9 @@ public interface TransactionStateStore {
      * Adds a UETR to the tracking list if not already present.
      */
     void addUetr(String uetr);
+
+    /**
+     * Returns true if the store contains no UETRs at all (fresh database).
+     */
+    boolean isEmpty();
 }

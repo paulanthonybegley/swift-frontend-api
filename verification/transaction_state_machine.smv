@@ -1,0 +1,89 @@
+-- Transaction State Machine Model for NuSMV
+-- Formal verification of payment transaction lifecycle
+
+MODULE main
+  VAR
+    state : {INIT, PDNG, ACCC, RJCT};
+    
+  ASSIGN
+    -- Initial state is always INIT
+    init(state) := INIT;
+    
+    -- State transition rules
+    next(state) := case
+      -- From INIT: can go to PDNG (normal) or RJCT (early rejection)
+      state = INIT : {PDNG, RJCT};
+      
+      -- From PDNG: can go to ACCC (success), RJCT (failure), or stay in PDNG (add routes)
+      state = PDNG : {PDNG, ACCC, RJCT};
+      
+      -- From ACCC: terminal state, stays in ACCC
+      state = ACCC : ACCC;
+      
+      -- From RJCT: terminal state, stays in RJCT
+      state = RJCT : RJCT;
+      
+      -- Default: stay in current state
+      TRUE : state;
+    esac;
+
+  -- Define terminal states
+  DEFINE
+    is_terminal := (state = ACCC | state = RJCT);
+    is_success := (state = ACCC);
+    is_failure := (state = RJCT);
+
+  -- ========== CTL SPECIFICATIONS ==========
+  
+  -- Property 1: ACCC is a stable terminal state (once reached, never leaves)
+  CTLSPEC AG(state = ACCC -> AX(state = ACCC))
+  
+  -- Property 2: RJCT is a stable terminal state (once reached, never leaves)
+  CTLSPEC AG(state = RJCT -> AX(state = RJCT))
+  
+  -- Property 3: ACCC is reachable from initial state (success path exists)
+  CTLSPEC EF(state = ACCC)
+  
+  -- Property 4: RJCT is reachable from initial state (failure path exists)
+  CTLSPEC EF(state = RJCT)
+  
+  -- Property 5: Every path from INIT eventually reaches a terminal state (liveness)
+  CTLSPEC AG(state = INIT -> AF(state = ACCC | state = RJCT))
+  
+  -- Property 6: Cannot go directly from INIT to ACCC (must go through PDNG)
+  CTLSPEC AG(state = INIT -> AX(state != ACCC))
+  
+  -- Property 7: Once terminal, always terminal (no escape from terminal states)
+  CTLSPEC AG(is_terminal -> AG(is_terminal))
+  
+  -- Property 8: From PDNG, can eventually reach ACCC (success path from processing)
+  CTLSPEC AG(state = PDNG -> EF(state = ACCC))
+  
+  -- Property 9: From PDNG, can eventually reach RJCT (failure path from processing)
+  CTLSPEC AG(state = PDNG -> EF(state = RJCT))
+  
+  -- Property 10: Cannot transition from ACCC to any other state except ACCC
+  CTLSPEC AG(state = ACCC -> AX(state = ACCC))
+  
+  -- Property 11: Cannot transition from RJCT to any other state except RJCT
+  CTLSPEC AG(state = RJCT -> AX(state = RJCT))
+  
+  -- Property 12: Every execution eventually reaches a terminal state (strong liveness)
+  CTLSPEC AF(is_terminal)
+  
+  -- ========== LTL SPECIFICATIONS ==========
+  
+  -- LTL Property 1: Eventually always in a terminal state
+  LTLSPEC F G(is_terminal)
+  
+  -- LTL Property 2: If we reach ACCC, we stay in ACCC forever
+  LTLSPEC G(state = ACCC -> G(state = ACCC))
+  
+  -- LTL Property 3: If we reach RJCT, we stay in RJCT forever
+  LTLSPEC G(state = RJCT -> G(state = RJCT))
+  
+  -- LTL Property 4: Cannot have INIT after ACCC
+  LTLSPEC G(state = ACCC -> G(state != INIT))
+  
+  -- LTL Property 5: Cannot have INIT after RJCT
+  LTLSPEC G(state = RJCT -> G(state != INIT))
